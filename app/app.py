@@ -1,9 +1,18 @@
 import re
 from flask import Flask, request, abort, jsonify
+from flask_mail import Mail, Message
 from math import cos, asin, pi, sqrt
 
 app = Flask(__name__)
 treasure_location = (50.051227, 19.945704)
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = '@gmail.com'
+app.config['MAIL_PASSWORD'] = '****'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+mail = Mail(app)
 
 
 @app.route('/')
@@ -17,12 +26,23 @@ def check_position():
     email = request.args.get("email", type=str)
     validate_position(position)
     validate_email(email)
-    return jsonify(status="ok", distance=calculate_distance(position, treasure_location))
+    distance = calculate_distance(position, treasure_location)
+    if distance <= 5:
+        send_email(email, 0)
+    return jsonify(status="ok", distance=distance)
 
 
 @app.errorhandler(404)
 def page_not_found(error):
     return jsonify(status="error", distance=-1, error=error.description), 404
+
+
+def send_email(email, n):
+    msg = Message('Congratulations!', sender='@gmail.com', recipients=[email])
+    msg.body = "Hey, you’ve found a treasure, congratulations! You are {} treasure hunter who has found the treasure." \
+               "\nTreasure position is: {}"\
+        .format(n, treasure_location)
+    mail.send(msg)
 
 
 def validate_position(position):
